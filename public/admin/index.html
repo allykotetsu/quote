@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Quotes</title>
+        <style>
+            button {
+                margin: 0 0.5em;
+            }
+        </style>
+        <script>
+            "use strict";
+
+            // TODO dismiss error popup
+
+            async function newQuote(page, count) {
+                const message = document.getElementById("new-quote-text").value;
+
+                const response = await fetch("/plugins/quote/admin/api/quote", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ message: message.trim() })
+                });
+
+                switch(response.status) {
+                    case 200:
+                    case 201: {
+                        document.getElementById("new-quote-text").value = "";
+                        await loadQuotes(page, count);
+                        break;
+                    }
+                    case 400: {
+                        popup("A quote matching this already exists.");
+                        break;
+                    }
+                    case 500: {
+                        popup("Internal server error. Please check logs.");
+                        break;
+                    }
+                }
+            }
+
+            async function removeQuotes(page, count, quotes) {
+                const response = await fetch("/plugins/quote/admin/api/quotes", {
+                    method: "DELETE",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ ids: quotes })
+                });
+
+                switch(response.status) {
+                    case 200: {
+                        await loadQuotes(page, count);
+                        break;
+                    }
+                    case 500: {
+                        popup("Internal server error. Please check logs.");
+                        break;
+                    }
+                }
+            }
+
+            async function updateQuote(id) {
+                const input = document.getElementById(`quote-input-${id}`);
+
+                const response = await fetch("/plugins/quote/admin/api/quote", {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        id: id,
+                        message: input.value.trim()
+                    })
+                });
+
+                switch(response.status) {
+                    case 200: {
+                        input.dataset.initialValue = input.value;
+                        document.getElementById(`quote-update-${id}`).disabled = true;
+                        document.getElementById(`quote-revert-${id}`).disabled = true;
+                        break;
+                    }
+                    case 404: {
+                        popup("The quote to update didn't exist.");
+                        break;
+                    }
+                    case 500: {
+                        popup("Internal server error. Please check logs.");
+                        break;
+                    }
+                }
+            }
+
+            async function revertQuote(id) {
+                const quoteInput = document.getElementById(`quote-input-${id}`);
+                quoteInput.value = quoteInput.dataset.initialValue;
+                document.getElementById(`quote-update-${id}`).disabled = true;
+                document.getElementById(`quote-revert-${id}`).disabled = true;
+            }
+
+            async function removeSelectedQuotes(page, count) {
+                const selected = [...document.getElementsByClassName("checkbox")].filter(e => e.checked).map(e => Number(e.dataset.id));
+                console.log(selected);
+                await removeQuotes(page, count, selected);
+            }
+
+            async function loadQuotes(page, count) {
+                const select = document.createElement("th");
+                select.innerText = "Select";
+                const num = document.createElement("th");
+                num.innerText = "#";
+                const quoteText = document.createElement("th");
+                quoteText.innerText = "Quote Text";
+                const actions = document.createElement("th");
+                actions.innerText = "Actions";
+
+                const tr_headers = document.createElement("tr");
+                tr_headers.appendChild(select);
+                tr_headers.appendChild(num);
+                tr_headers.appendChild(quoteText);
+                tr_headers.appendChild(actions);
+
+                document.getElementById("quotes").replaceChildren(tr_headers);
+
+                const response = await fetch(`/plugins/quote/admin/api/quotes?page=${page}&count=${count}`, {
+                    method: "GET",
+                    headers: {
+                        "Accept": "application/json",
+                    }
+                });
+
+                switch(response.status) {
+                    case 200: {
+                        const json = await response.json();
+
+                        const pages = Math.ceil(json.total / 10);
+
+                        if(pages >= 1 && page > pages) {
+                            await loadQuotes(pages, count);
+                        } else if(page <= 0) {
+                            await loadQuotes(1, count);
+                        } else {
+                            for(const id in json.quotes) {
+                                // Select Box
+                                const input = document.createElement("input");
+                                input.type = "checkbox";
+                                input.classList.add("checkbox");
+                                input.id = `select-quote-${id}`;
+                                input.dataset.id = id;
+                                input.addEventListener("input", () => {
+                                    const inputs = document.getElementsByClassName("checkbox");
+                                    const removeAll = document.getElementById("mass-delete");
+
+                                    for(const input of inputs) {
+                                        if(input.checked) {
+                                            removeAll.disabled = false;
+                                            return;
+                                        }
+                                    }
+
+                                    removeAll.disabled = true;
+                                });
+                                const tdSelect = document.createElement("td");
+                                tdSelect.appendChild(input);
+
+
+                                // ID
+                                const tdId = document.createElement("td");
+                                tdId.innerText = id;
+
+                                // Quote
+                                const quoteInput = document.createElement("input");
+                                quoteInput.value = json.quotes[id];
+                                quoteInput.id = `quote-input-${id}`;
+                                quoteInput.dataset.initialValue = json.quotes[id];
+                                const tdQuote = document.createElement("td");
+                                tdQuote.appendChild(quoteInput);
+
+                                // Action Buttons
+                                const removeButton = document.createElement("button");
+                                removeButton.onclick = async () => removeQuotes(page, count, [Number(id)]);
+                                removeButton.innerText = "Remove";
+
+                                const updateButton = document.createElement("button");
+                                updateButton.id = `quote-update-${id}`;
+                                updateButton.onclick = async () => updateQuote(Number(id));
+                                updateButton.innerText = "Update";
+                                updateButton.disabled = true;
+
+                                const revertButton = document.createElement("button");
+                                revertButton.id = `quote-revert-${id}`;
+                                revertButton.onclick = async () => revertQuote(Number(id));
+                                revertButton.innerText = "Revert";
+                                revertButton.disabled = true;
+
+                                quoteInput.addEventListener("input", event => {
+                                    revertButton.disabled = updateButton.disabled = event.target.value.trim() === event.target.dataset.initialValue;
+                                });
+
+                                const tdActions = document.createElement("td");
+                                tdActions.appendChild(removeButton);
+                                tdActions.appendChild(updateButton);
+                                tdActions.appendChild(revertButton);
+
+                                // Table Row
+                                const tr = document.createElement("tr");
+                                tr.appendChild(tdSelect);
+                                tr.appendChild(tdId);
+                                tr.appendChild(tdQuote);
+                                tr.appendChild(tdActions);
+
+                                document.getElementById("quotes").appendChild(tr);
+                            }
+
+                            document.getElementById("pages").innerHTML = `Page <b>${Math.min(page, pages)}</b> of ${pages}`;
+
+                            const pageLeft = document.getElementById("page-left");
+                            pageLeft.onclick = async () => loadQuotes(page - 1, count);
+                            pageLeft.disabled = page <= 1;
+
+                            const pageRight = document.getElementById("page-right");
+                            pageRight.onclick = async () => loadQuotes(page + 1, count);
+                            pageRight.disabled = page >= pages;
+
+                            document.getElementById("new-quote-button").onclick = async () => newQuote(page, count);
+                            document.getElementById("mass-delete").onclick = async () => removeSelectedQuotes(page, count);
+                        }
+
+                        break;
+                    }
+
+                    case 500: {
+                        popup("Internal server error. Please check logs.");
+                        break;
+                    }
+                }
+            }
+
+            function popup(message) {
+                const error = document.getElementById("error");
+                error.innerHTML = `<b>Error</b>: ${message}`;
+                error.style.display = "block";
+            }
+
+            window.onload = async () => {
+                await loadQuotes(1, 10);
+
+                document.getElementById("new-quote-text").addEventListener("input", event => {
+                    document.getElementById("new-quote-button").disabled = event.target.value.trim() === "";
+                });
+            };
+        </script>
+    </head>
+    <body>
+        <h1>Admin</h1>
+        <p>Quotes are created and viewed using chat commands by viewers during stream, and they can be removed/modified by mods. Admins can also view, remove, modify, and create new ones here.</p>
+        <hr/>
+        <div id="error" style="background-color: #ffff88; border-radius: var(--theme-rounded-corners); padding: 1em; margin: 1em 0; display: none;"></div>
+        <div style="display: flex;">
+            <label for="new-quote-text">Create new quote: </label>
+            <input id="new-quote-text" placeholder="Quote text"/>
+            <button id="new-quote-button" disabled>Add new quote</button>
+        </div>
+        <br/>
+        <h2>Quotes</h2>
+        <table id="quotes">
+            <tr>
+                <th>Select</th>
+                <th>#</th>
+                <th>Quote text</th>
+                <th>Actions</th>
+            </tr>
+        </table>
+        <br/>
+        <div style="display: flex;">
+            <button style="flex: 1;" disabled="disabled" autocomplete="off" id="page-left"><</button>
+            <p style="text-align: center; flex: 1;" id="pages">Page <b>1</b> of 1</p>
+            <button style="flex: 1;" disabled="disabled" autocomplete="off" id="page-right">></button>
+        </div>
+        <br/>
+        <button id="mass-delete" disabled="disabled" autocomplete="off">Remove selected</button>
+    </body>
+</html>
