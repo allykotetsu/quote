@@ -1,2 +1,2 @@
 # quote
-Adds the ability to create streamer quotes and list them back in chat.
+Let your viewers quote you and send the quotes back in chat.

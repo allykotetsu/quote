@@ -3,7 +3,7 @@
   "name": "Quote",
   "slug": "quote",
   "version": "0.1.0",
-  "description": "Adds the ability to create streamer quotes and list them back in chat.",
+  "description": "Let your viewers quote you and send the quotes back in chat.",
   "category": "chat-bots",
   "bot": {
     "displayName": "Quote Bot"
