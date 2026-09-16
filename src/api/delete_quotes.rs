@@ -10,11 +10,15 @@ struct Request {
 }
 
 pub(crate) fn function(body: &str) -> Result<OutgoingHttpResponse, Error> {
+    // Deserialize JSON body to get quote IDs out.
     let Request { ids } = serde_json::from_str(body)?;
 
+    // Attempt to remove quote.
     Ok(OutgoingHttpResponse::new(if remove_quotes(ids)? == 0 {
+        // If 0 rows were modified, then return 404.
         Status::NotFound
     } else {
+        // Else return 200.
         Status::Ok
     }))
 }

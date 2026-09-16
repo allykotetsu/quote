@@ -101,3 +101,5 @@ define_plugin!(|mut plugin_builder| {
 });
 
 fn main() {}
+
+// TODO dismiss error popups
