@@ -2,7 +2,7 @@
   "api": "1",
   "name": "Quote",
   "slug": "quote",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Let your viewers quote you and send the quotes back in chat.",
   "category": "chat-bots",
   "bot": {

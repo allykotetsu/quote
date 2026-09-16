@@ -2,7 +2,6 @@ use anyhow::Error;
 use owncast_plugin_sdk_rust::command::command_context::CommandContext;
 use crate::helpers::{get_num_quotes, get_quotes, get_server_name};
 
-// TODO show how many quotes there are
 pub(crate) fn function(command_context: &CommandContext) -> Result<(), Error> {
     // Get page or 1.
     Ok(match command_context.args.get(0).unwrap_or(&"1".to_string()).parse::<u32>() {
@@ -18,7 +17,9 @@ pub(crate) fn function(command_context: &CommandContext) -> Result<(), Error> {
                 // If there are no quotes on page, but there are not 0 quotes total, then tell user there aren't quotes on this page.
                 (0, total_count) => {
                     let pages = ((total_count as f64) / 10.).ceil();
-                    command_context.reply(&format!("There aren't any quotes on this page. There are currently only {pages} pages of quotes."))
+                    let word1 = if pages <= 1. { "is" } else { "are" };
+                    let word2 = if pages <= 1. { "page" } else { "pages" };
+                    command_context.reply(&format!("There aren't any quotes on that page. There {word1} currently only {pages} {word2} of quotes."))
                 },
 
                 // If there are not 0 quotes on the page, then give user quotes.
@@ -28,15 +29,15 @@ pub(crate) fn function(command_context: &CommandContext) -> Result<(), Error> {
                     // Turn each quote into a formatted String for the chat message.
                     let quotes = &quotes
                         .iter()
-                        .map(|(id, message)| format!("**#{id}**: \"{message}\""))
+                        .map(|(id, message)| format!("> **#{id}**: \"{message}\""))
                         .collect::<Vec<String>>()
                         .join("\n\n");
 
                     // Format quotes block into chat message. Include streamer name if able to retrieve it.
                     let body = if let Some(name) = get_server_name() {
-                        format!("*Quotes by {name}:*\n\n{quotes}\n\nPage **{page}** of {pages}")
+                        format!("*{total_count} quotes by {name}:*\n\n{quotes}\n\nPage **{page}** of {pages}")
                     } else {
-                        format!("{quotes}\n\nPage **{page}** of {pages}")
+                        format!("*{total_count} quotes:*\n\n*{quotes}\n\nPage **{page}** of {pages}")
                     };
 
                     command_context.reply(&body)
@@ -45,6 +46,6 @@ pub(crate) fn function(command_context: &CommandContext) -> Result<(), Error> {
         },
 
         // If there was an error parsing page, then tell user how to use command.
-        Err(_) => command_context.reply("`!quotes` requires one whole, positive number when using the command this way.\n\n**Example**: `!quote 1`")
+        Err(_) => command_context.reply("`!quotes` requires one whole, positive number when using the command this way.\n\n**Example**: `!quotes 1`")
     })
 }

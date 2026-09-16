@@ -14,11 +14,11 @@
         <script>
             "use strict";
 
-            // TODO dismiss error popup
-
             async function newQuote(page, count) {
+                // Get the new quote text.
                 const message = document.getElementById("new-quote-text").value;
 
+                // Post the new quote text to the server.
                 const response = await fetch("/plugins/quote/admin/api/quote", {
                     method: "POST",
                     headers: {
@@ -30,7 +30,9 @@
                 switch(response.status) {
                     case 200:
                     case 201: {
+                        // If successful, then reset the new quote input/button and refresh the quotes.
                         document.getElementById("new-quote-text").value = "";
+                        document.getElementById("new-quote-button").disabled = true;
                         await loadQuotes(page, count);
                         break;
                     }
@@ -46,6 +48,7 @@
             }
 
             async function removeQuotes(page, count, quotes) {
+                // Send the array of quote IDs to the server for deletion.
                 const response = await fetch("/plugins/quote/admin/api/quotes", {
                     method: "DELETE",
                     headers: {
@@ -56,6 +59,7 @@
 
                 switch(response.status) {
                     case 200: {
+                        // If successful then refresh quotes.
                         await loadQuotes(page, count);
                         break;
                     }
@@ -67,8 +71,10 @@
             }
 
             async function updateQuote(id) {
+                // Get the new quote text for the quote matching the ID.
                 const input = document.getElementById(`quote-input-${id}`);
 
+                // Send the new quote text along with the ID to the server.
                 const response = await fetch("/plugins/quote/admin/api/quote", {
                     method: "PATCH",
                     headers: {
@@ -82,6 +88,7 @@
 
                 switch(response.status) {
                     case 200: {
+                        // If successful then reset the quote's initial value and disable the buttons.
                         input.dataset.initialValue = input.value;
                         document.getElementById(`quote-update-${id}`).disabled = true;
                         document.getElementById(`quote-revert-${id}`).disabled = true;
@@ -99,19 +106,29 @@
             }
 
             async function revertQuote(id) {
+                // Take the input field for the quote and reset it back to its original value.
                 const quoteInput = document.getElementById(`quote-input-${id}`);
                 quoteInput.value = quoteInput.dataset.initialValue;
+
+                // Disable the buttons.
                 document.getElementById(`quote-update-${id}`).disabled = true;
                 document.getElementById(`quote-revert-${id}`).disabled = true;
             }
 
             async function removeSelectedQuotes(page, count) {
-                const selected = [...document.getElementsByClassName("checkbox")].filter(e => e.checked).map(e => Number(e.dataset.id));
-                console.log(selected);
+                // Find every checkbox and spread it to an array
+                const selected = [...document.getElementsByClassName("checkbox")]
+                    // Filter out unchecked.
+                    .filter(e => e.checked)
+                    // Map each one to its ID.
+                    .map(e => Number(e.dataset.id));
+
+                // Send the array of IDs to removeQuotes().
                 await removeQuotes(page, count, selected);
             }
 
             async function loadQuotes(page, count) {
+                // Create table header row.
                 const select = document.createElement("th");
                 select.innerText = "Select";
                 const num = document.createElement("th");
@@ -129,6 +146,7 @@
 
                 document.getElementById("quotes").replaceChildren(tr_headers);
 
+                // Get a page of quotes from the server.
                 const response = await fetch(`/plugins/quote/admin/api/quotes?page=${page}&count=${count}`, {
                     method: "GET",
                     headers: {
@@ -138,15 +156,19 @@
 
                 switch(response.status) {
                     case 200: {
+                        // If successful then extract JSON body.
                         const json = await response.json();
 
                         const pages = Math.ceil(json.total / 10);
 
                         if(pages >= 1 && page > pages) {
+                            // If you are paged past what is available then go to last page.
                             await loadQuotes(pages, count);
                         } else if(page <= 0) {
+                            // if you are paged before page 1 then go to page 1.
                             await loadQuotes(1, count);
                         } else {
+                            // For each quote construct a table row element.
                             for(const id in json.quotes) {
                                 // Select Box
                                 const input = document.createElement("input");
@@ -154,6 +176,7 @@
                                 input.classList.add("checkbox");
                                 input.id = `select-quote-${id}`;
                                 input.dataset.id = id;
+                                // When select box is un/ticked, test each one. If at least one is selected, then set Remove All button to enabled.
                                 input.addEventListener("input", () => {
                                     const inputs = document.getElementsByClassName("checkbox");
                                     const removeAll = document.getElementById("mass-delete");
@@ -169,7 +192,6 @@
                                 });
                                 const tdSelect = document.createElement("td");
                                 tdSelect.appendChild(input);
-
 
                                 // ID
                                 const tdId = document.createElement("td");
@@ -200,6 +222,7 @@
                                 revertButton.innerText = "Revert";
                                 revertButton.disabled = true;
 
+                                // If the value of the quote text field matches its initial value, then disable buttons. Otherwise enable them.
                                 quoteInput.addEventListener("input", event => {
                                     revertButton.disabled = updateButton.disabled = event.target.value.trim() === event.target.dataset.initialValue;
                                 });
@@ -209,28 +232,36 @@
                                 tdActions.appendChild(updateButton);
                                 tdActions.appendChild(revertButton);
 
-                                // Table Row
+                                // Add all elements to table row.
                                 const tr = document.createElement("tr");
                                 tr.appendChild(tdSelect);
                                 tr.appendChild(tdId);
                                 tr.appendChild(tdQuote);
                                 tr.appendChild(tdActions);
 
+                                // Add table row to table.
                                 document.getElementById("quotes").appendChild(tr);
                             }
 
+                            // Display page count.
                             document.getElementById("pages").innerHTML = `Page <b>${Math.min(page, pages)}</b> of ${pages}`;
 
+                            // Page left button.
                             const pageLeft = document.getElementById("page-left");
                             pageLeft.onclick = async () => loadQuotes(page - 1, count);
                             pageLeft.disabled = page <= 1;
 
+                            // Page right button.
                             const pageRight = document.getElementById("page-right");
                             pageRight.onclick = async () => loadQuotes(page + 1, count);
                             pageRight.disabled = page >= pages;
 
+                            // Update new quote and remove all buttons.
                             document.getElementById("new-quote-button").onclick = async () => newQuote(page, count);
                             document.getElementById("mass-delete").onclick = async () => removeSelectedQuotes(page, count);
+
+                            // Update number of quotes registered.
+                            document.getElementById("num-quotes").innerHTML = `There are <b>${json.total}</b> quotes registered.`;
                         }
 
                         break;
@@ -244,14 +275,19 @@
             }
 
             function popup(message) {
-                const error = document.getElementById("error");
-                error.innerHTML = `<b>Error</b>: ${message}`;
-                error.style.display = "block";
+                document.getElementById("error-text").innerHTML = `<b>Error</b>: ${message}`;
+                document.getElementById("error").style.display = "flex";
+            }
+
+            function dismiss() {
+                document.getElementById("error").style.display = "none";
             }
 
             window.onload = async () => {
+                // Load first page of quotes.
                 await loadQuotes(1, 10);
 
+                // When the input text of the new quote input field changes, if it isn't empty then enable new quote button.
                 document.getElementById("new-quote-text").addEventListener("input", event => {
                     document.getElementById("new-quote-button").disabled = event.target.value.trim() === "";
                 });
@@ -262,7 +298,10 @@
         <h1>Admin</h1>
         <p>Quotes are created and viewed using chat commands by viewers during stream, and they can be removed/modified by mods. Admins can also view, remove, modify, and create new ones here.</p>
         <hr/>
-        <div id="error" style="background-color: #ffff88; border-radius: var(--theme-rounded-corners); padding: 1em; margin: 1em 0; display: none;"></div>
+        <div id="error" style="background-color: #ffff88; border-radius: var(--theme-rounded-corners); padding: 1em; margin: 1em 0; display: none; justify-content: space-between;">
+            <p id="error-text"></p>
+            <button onclick="dismiss()" style="background-color: #ffa700; border: none;">X</button>
+        </div>
         <div style="display: flex;">
             <label for="new-quote-text">Create new quote: </label>
             <input id="new-quote-text" placeholder="Quote text"/>
@@ -270,6 +309,7 @@
         </div>
         <br/>
         <h2>Quotes</h2>
+        <p id="num-quotes"></p>
         <table id="quotes">
             <tr>
                 <th>Select</th>
