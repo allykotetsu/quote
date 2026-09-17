@@ -125,7 +125,7 @@ pub(crate) fn remove_quotes(ids: Vec<u32>) -> Result<i64, Error> {
     let string = &string[..string.len() - 2];
 
     // Take each ID and map it to a SqlValue::Number for use as the SQL parameters.
-    let ids: Vec<SqlValue> = ids.iter().map(|id| SqlValue::Number(*id as i64)).collect();
+    let ids: Vec<SqlValue> = ids.iter().map(|id| SqlValue::Integer(*id as i64)).collect();
 
     // Execute SQL delete for quotes if the quote ID is in the ID list.
     Ok(owncast::sql::exec(&format!("DELETE FROM quote WHERE id IN ({string})"), ids)?.rows_affected)
