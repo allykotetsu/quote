@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use anyhow::{anyhow, Error};
 use owncast_plugin_sdk_rust::json_objects::server_info::ServerInfo;
-use owncast_plugin_sdk_rust::{owncast, run, sql_params};
+use owncast_plugin_sdk_rust::{owncast, sql_params};
+use owncast_plugin_sdk_rust::helpers::run;
 use owncast_plugin_sdk_rust::json_objects::count::Count;
 use owncast_plugin_sdk_rust::json_objects::sql_value::SqlValue;
 use crate::objects::quote_id::QuoteId;
@@ -15,7 +16,7 @@ pub(crate) fn get_server_name() -> Option<String> {
 
         // If there is an error getting back the server info, then report and return None.
         Err(error) => {
-            run!(owncast::log::error(&format!("{error:?}")));
+            run(owncast::log::error(&format!("{error:?}")));
             None
         }
     }
@@ -28,7 +29,7 @@ pub(crate) fn get_quotes(limit: u32, skip: u32) -> Result<HashMap<u32, String>, 
     Ok(sql_rows.iter().filter_map(|sql_row| {
         // Filter map on each SQL row. If SQL row is an error then log.
         if let Err(error) = sql_row {
-            run!(owncast::log::error(&format!("{error:?}")))
+            run(owncast::log::error(&format!("{error:?}")))
         }
 
         // Take the SQL Row, convert it to a reference, and filter out Errs / convert Ok(x) to x.

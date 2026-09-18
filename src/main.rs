@@ -8,6 +8,7 @@ use owncast_plugin_sdk_rust::command::command_builder::CommandBuilder;
 use owncast_plugin_sdk_rust::prelude::*;
 use owncast_plugin_sdk_rust::owncast;
 use owncast_plugin_sdk_rust::command::command_context::CommandContext;
+use owncast_plugin_sdk_rust::helpers::run;
 use owncast_plugin_sdk_rust::json_objects::method::Method;
 use owncast_plugin_sdk_rust::json_objects::partial_incoming_http_request::PartialIncomingHttpRequest;
 use owncast_plugin_sdk_rust::json_objects::status::Status;
@@ -17,19 +18,19 @@ use crate::commands::{newquote, quote, quotes, removequote, updatequote};
 fn run_and_report_error(function: fn(&CommandContext) -> Result<(), Error>, command_context: &CommandContext) {
     if let Err(error) = function(command_context) {
         command_context.reply("There was an internal server error running this command.");
-        run!(owncast::log::error(&format!("{error:?}")));
+        run(owncast::log::error(&format!("{error:?}")));
     }
 }
 
 fn http_500_if_error(error: Error) -> OutgoingHttpResponse {
-    run!(owncast::log::error(&format!("{error:?}")));
+    run(owncast::log::error(&format!("{error:?}")));
     OutgoingHttpResponse::new(Status::InternalServerError)
 }
 
 define_plugin!(|mut plugin_builder| {
     // Init database with table info.
     plugin_builder.on_init(|_| {
-        run!(owncast::sql::exec(r#"CREATE TABLE IF NOT EXISTS quote (
+        run(owncast::sql::exec(r#"CREATE TABLE IF NOT EXISTS quote (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             message TEXT NOT NULL UNIQUE
         )"#, vec![]));
