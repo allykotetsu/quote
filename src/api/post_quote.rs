@@ -19,11 +19,11 @@ pub(crate) fn function(body: &str) -> Result<OutgoingHttpResponse, Error> {
     let Request { message } = serde_json::from_str(body)?;
 
     // Attempt to create new quote.
-    Ok(match new_quote(&message)? {
-        // If quote already exists, then return 400.
-        NewQuoteResponse::Duplicate => OutgoingHttpResponse::new(Status::BadRequest),
-
+    Ok(if let NewQuoteResponse::NewQuote(id) = new_quote(&message)? {
         // Else return back 201 with the new quote's ID.
-        NewQuoteResponse::NewQuote(id) => OutgoingHttpResponse::application_json(Status::Created, Response { id })?
+        OutgoingHttpResponse::application_json(Status::Created, Response { id })?
+    } else {
+        // If quote already exists, then return 400.
+        OutgoingHttpResponse::new(Status::BadRequest)
     })
 }

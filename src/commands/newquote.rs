@@ -8,12 +8,12 @@ pub(crate) fn function(command_context: &CommandContext) -> Result<(), Error> {
         command_context.reply("`!newquote` requires you to list the quote in question.\n\n**Example**: `!newquote Hi everyone.`")
     } else {
         // Attempt to create new quote.
-        match new_quote(&command_context.arg_string)? {
-            // If duplicate quote then tell user this quote already exists.
-            NewQuoteResponse::Duplicate => command_context.reply("This quote already exists!"),
-
+        if let NewQuoteResponse::NewQuote(id) = new_quote(&command_context.arg_string)? {
             // If a new quote then tell user the quote's ID.
-            NewQuoteResponse::NewQuote(id) => command_context.reply(&format!("Quote #{id} added!"))
+            command_context.reply(&format!("Quote #{id} added!"));
+        } else {
+            // If duplicate quote then tell user this quote already exists.
+            command_context.reply("This quote already exists!")
         }
     })
 }

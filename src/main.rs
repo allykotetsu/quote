@@ -101,4 +101,6 @@ define_plugin!(|mut plugin_builder| {
     Ok(plugin_builder)
 });
 
-fn main() {}
+fn main() {
+
+}
